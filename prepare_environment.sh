@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+export REGION=${ZONE::-2}
 echo "Creating App Engine app"
 gcloud app create --region "us-central"
 
@@ -42,12 +43,12 @@ echo "Creating Cloud Pub/Sub topic"
 gcloud beta pubsub topics create feedback
 
 echo "Creating Cloud Spanner Instance, Database, and Table"
-gcloud spanner instances create quiz-instance --config=regional-us-central1 --description="Quiz instance" --nodes=1
+gcloud spanner instances create quiz-instance --config=regional-us-central1 --description="CloudHustlers" --nodes=1
 gcloud spanner databases create quiz-database --instance quiz-instance --ddl "CREATE TABLE Feedback ( feedbackId STRING(100) NOT NULL, email STRING(100), quiz STRING(20), feedback STRING(MAX), rating INT64, score FLOAT64, timestamp INT64 ) PRIMARY KEY (feedbackId);"
 
 echo "Creating Container Engine cluster"
-gcloud container clusters create quiz-cluster --zone us-central1-a --scopes cloud-platform
-gcloud container clusters get-credentials quiz-cluster --zone us-central1-a
+gcloud container clusters create quiz-cluster --zone $ZONE --scopes cloud-platform
+gcloud container clusters get-credentials quiz-cluster --zone $ZONE
 
 echo "Building Containers"
 gcloud container builds submit -t gcr.io/$DEVSHELL_PROJECT_ID/quiz-frontend ./frontend/
