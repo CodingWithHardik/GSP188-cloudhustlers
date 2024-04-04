@@ -59,13 +59,21 @@ echo "Creating Container Engine cluster"
 gcloud container clusters create quiz-cluster --zone $ZONE --scopes cloud-platform
 gcloud container clusters get-credentials quiz-cluster --zone $ZONE
 
-echo "Building Containers"
-gcloud container builds submit -t gcr.io/$DEVSHELL_PROJECT_ID/quiz-frontend ./frontend/
-gcloud container builds submit -t gcr.io/$DEVSHELL_PROJECT_ID/quiz-backend ./backend/
+cd ~/GSP188-cloudhustlers
 
+echo "Building Containers"
+gcloud builds submit -t gcr.io/$DEVSHELL_PROJECT_ID/quiz-frontend ./frontend/
+gcloud builds submit -t gcr.io/$DEVSHELL_PROJECT_ID/quiz-backend ./backend/
+
+export GCR_FRONTEND=gcr.io/$DEVSHELL_PROJECT_ID/quiz-frontend
+export GCR_BACKEND=gcr.io/$DEVSHELL_PROJECT_ID/quiz-backend
 echo "Deploying to Container Engine"
 sed -i -e "s/\[GCLOUD_PROJECT\]/$DEVSHELL_PROJECT_ID/g" ./frontend-deployment.yaml
+sed -i -e "s/\[GCLOUD_BUCKET\]/$GCLOUD_BUCKET/g" ./frontend-deployment.yaml
+sed -i -e "s/\[FRONTEND_IMAGE_IDENTIFIER\]/$GCR_FRONTEND/g" ./frontend-deployment.yaml
 sed -i -e "s/\[GCLOUD_PROJECT\]/$DEVSHELL_PROJECT_ID/g" ./backend-deployment.yaml
+sed -i -e "s/\[GCLOUD_BUCKET\]/$GCLOUD_BUCKET/g" ./backend-deployment.yaml
+sed -i -e "s/\[BACKEND_IMAGE_IDENTIFIER\]/$GCR_BACKEND/g" ./backend-deployment.yaml
 kubectl create -f ./frontend-deployment.yaml
 kubectl create -f ./backend-deployment.yaml
 kubectl create -f ./frontend-service.yaml
