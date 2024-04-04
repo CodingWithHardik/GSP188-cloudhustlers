@@ -14,37 +14,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 export REGION=${ZONE::-2}
-echo "Creating App Engine app"
+echo "Creating quiz-account Service Account"
+gcloud iam service-accounts create quiz-account --display-name "Quiz Account"
+gcloud iam service-accounts keys create key.json --iam-account=quiz-account@$DEVSHELL_PROJECT_ID.iam.gserviceaccount.com
+
+echo "Setting quiz-account IAM Role"
+gcloud projects add-iam-policy-binding $DEVSHELL_PROJECT_ID --member serviceAccount:quiz-account@$DEVSHELL_PROJECT_ID.iam.gserviceaccount.com --role roles/owner
+
+echo "Creating Datastore/App Engine instance"
 gcloud app create --region "us-central"
 
-echo "Making bucket: gs://$DEVSHELL_PROJECT_ID-media"
+echo "Creating bucket: gs://$DEVSHELL_PROJECT_ID-media"
 gsutil mb gs://$DEVSHELL_PROJECT_ID-media
 
 echo "Exporting GCLOUD_PROJECT and GCLOUD_BUCKET"
 export GCLOUD_PROJECT=$DEVSHELL_PROJECT_ID
 export GCLOUD_BUCKET=$DEVSHELL_PROJECT_ID-media
 
-echo "Installing dependencies"
-mvn clean install
+echo "Creating virtual environment"
+mkdir ~/venvs
+virtualenv -p python3 ~/venvs/developingapps
+source ~/venvs/developingapps/bin/activate
+
+echo "Installing Python libraries"
+pip install --upgrade pip
+pip install -r requirements.txt
 
 echo "Creating Datastore entities"
-mvn exec:java@create-entities
+python add_entities.py
 
-echo "Copying frontend output into frontend folder"
-cp ./target/quiz-frontend-0.0.1.jar ./frontend/
-
-echo "Packaging backend output"
-mvn package -f pom-backend.xml
-
-echo "Copying backend output into backend folder"
-cp ./target/quiz-backend-0.0.1.jar ./backend/
+echo "Export credentials key.json"
+export GOOGLE_APPLICATION_CREDENTIALS=key.json
 
 echo "Creating Cloud Pub/Sub topic"
-gcloud beta pubsub topics create feedback
+gcloud pubsub topics create feedback
+gcloud pubsub subscriptions create worker-subscription --topic feedback
 
 echo "Creating Cloud Spanner Instance, Database, and Table"
-gcloud spanner instances create quiz-instance --config=regional-us-central1 --description="CloudHustlers" --nodes=1
+gcloud spanner instances create quiz-instance --config=regional-us-central1 --description="Quiz instance" --nodes=1
 gcloud spanner databases create quiz-database --instance quiz-instance --ddl "CREATE TABLE Feedback ( feedbackId STRING(100) NOT NULL, email STRING(100), quiz STRING(20), feedback STRING(MAX), rating INT64, score FLOAT64, timestamp INT64 ) PRIMARY KEY (feedbackId);"
+
 
 echo "Creating Container Engine cluster"
 gcloud container clusters create quiz-cluster --zone $ZONE --scopes cloud-platform
