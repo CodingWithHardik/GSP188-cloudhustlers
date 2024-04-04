@@ -59,7 +59,6 @@ echo "Creating Container Engine cluster"
 gcloud container clusters create quiz-cluster --zone $ZONE --scopes cloud-platform
 gcloud container clusters get-credentials quiz-cluster --zone $ZONE
 
-cd ~/GSP188-cloudhustlers
 
 echo "Building Containers"
 gcloud builds submit -t gcr.io/$DEVSHELL_PROJECT_ID/quiz-frontend ./frontend/
